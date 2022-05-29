@@ -62,6 +62,9 @@ void makeNewAO(active_object *ao){
 void newAO(struct Queue *q, void (*q_fun_ptr)(), void (*f_fun_ptr)()) {
     printf("NewAO is established\n");
     while (1){
+        if (q->status==-1){
+            break;
+        }
         struct QNode* temp = deQ(q);
         (*q_fun_ptr)(temp);
         (*f_fun_ptr)(temp);
@@ -72,6 +75,9 @@ void newAO(struct Queue *q, void (*q_fun_ptr)(), void (*f_fun_ptr)()) {
 //__________________________________________FunctionsForActiveObjects________________________________________________//
 
 void Ao1(struct QNode* node){
+    if (node==NULL){
+        return;
+    }
     printf("The string is in AO1\n");
     char* str = node->key;
     printf("The string is %s\n",str);
@@ -90,6 +96,9 @@ void Ao1(struct QNode* node){
 }
 
 void Ao2(struct QNode* node){
+    if (node==NULL){
+        return;
+    }
     printf("The string is in AO2\n");
     printf("The string is %s\n",node->key);
     int len = strlen(node->key);
@@ -104,17 +113,26 @@ void Ao2(struct QNode* node){
 }
 
 void afterAo1(struct QNode* node){
+    if (node==NULL){
+        return;
+    }
     printf("Now in afterAo1\n");
     printf("The string is %s\n",node->key);
     enQ(q2,node);
 }
 void afterAo2(struct QNode* node){
+    if (node==NULL){
+        return;
+    }
     printf("Now in afterAo2\n");
     printf("The string is %s\n",node->key);
     enQ(q3,node);
 }
 
 void backToClient(struct QNode* node){
+    if (node==NULL){
+        return;
+    }
     printf("The string is %s\n",node->key);
     char* curr = node->key;
     send(node->sock,curr, strlen(curr),0);
@@ -123,44 +141,26 @@ void backToClient(struct QNode* node){
 }
 
 void releaseNode(struct QNode* node){
+    if (node==NULL){
+        return;
+    }
     printf("In check func\n");
     free(node);
 }
 
 void destroyAO(active_object *obj) {
-    printf("try to destroy\n");
-//    printf("Tread was canceled\n");
+    printf("try to destroy %d\n",obj->q->id);
     destroyQ(obj->q);
-    pthread_cancel(obj->my_pid);
+    printf("after destroyQ\n");
     free(obj);
     printf("destroy AO finished!!\n");
 }
-
 
 /*
  * This is the function we are giving to the new thread that receiving data from client
  */
 void *newFunc(struct QNode *node){
-//    int sockId = *((int*)sock);
-//    free(sock);
-//    char clientData[1024];
-//    int numOfBytes;
-//    numOfBytes = recv(sockId, clientData, 1024, 0);
-//    clientData[numOfBytes] = '\0';
-//    printf("got data\n");
-//    printf("%s\n",clientData);
-//    if (!strcmp(clientData, "EXIT")){
-//        printf("EXIT was entered\n");
-//        destroyAO(pointer->first);
-//        destroyAO(pointer->second);
-//        destroyAO(pointer->third);
-//        close(sockId);
-//        return;
-//    }
-//    struct QNode* temp = (struct QNode*)malloc(sizeof(struct QNode));
-//    temp->key = clientData;
-//    temp->next=NULL;
-//    temp->sock = sockId;
+    printf("enQ the string: %s\n",node->key);
     enQ(q1,node);
     printf("%d\n",q1->id);
 }
@@ -226,8 +226,6 @@ int main(int argc, char const* argv[]){
         int clientSocket = accept(servSockD, NULL, NULL);
         printf("holding client socket\n");
         pthread_t newThread;
-//        int *newSock = malloc(sizeof (int));
-//        *newSock = clientSocket;
         char clientData[1024];
         int numOfBytes;
         numOfBytes = recv(clientSocket, clientData, 1024, 0);
@@ -248,15 +246,11 @@ int main(int argc, char const* argv[]){
     }
     printf("after while loop\n");
     sleep(5);
-    destroyAO(a3);
-    destroyAO(a2);
     destroyAO(a1);
-    pthread_mutex_destroy(&(q1->mutexQ));
-    pthread_cond_destroy(&(q1->condQ));
-    pthread_mutex_destroy(&(q2->mutexQ));
-    pthread_cond_destroy(&(q2->condQ));
-    pthread_mutex_destroy(&(q3->mutexQ));
-    pthread_cond_destroy(&(q3->condQ));
+    destroyAO(a2);
+    destroyAO(a3);
+    free(pipline1);
     close(servSockD);
+    printf("Finish realese all\n");
     return 0;
 }

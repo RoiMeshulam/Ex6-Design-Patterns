@@ -61,11 +61,11 @@ struct QNode* deQ(struct Queue* q){
     pthread_mutex_lock(&(q->mutexQ));
     while (q->front == NULL){
         printf("Queue %d is empty... waiting for enQ\n",q->id);
+        pthread_cond_wait(&(q->condQ),&(q->mutexQ));
         if (q->status==-1){
-//            pthread_mutex_unlock(&(q->mutexQ));
+            printf("status condition\n");
             return NULL;
         }
-        pthread_cond_wait(&(q->condQ),&(q->mutexQ));
     }
     printf("I am not empty\n");
     // Store previous front and move front one node ahead
@@ -97,10 +97,14 @@ struct QNode* lastDeQ(struct Queue* q){
 
 // free each Node in the queue and after free the queue.
 void destroyQ(struct Queue* q){
-    while (!lastDeQ(q)){
-//        struct QNode* temp = lastDeQ(q);
-//        free(temp);
+    q->status=-1;
+    pthread_cond_signal(&(q->condQ));
+    while (q->front!=NULL){
+        struct QNode* temp = lastDeQ(q);
+        free(temp);
     }
+    pthread_mutex_destroy(&(q->mutexQ));
+    pthread_cond_destroy(&(q->condQ));
     free(q);
 }
 

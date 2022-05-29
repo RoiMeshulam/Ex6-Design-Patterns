@@ -34,20 +34,4 @@ int main() {
     serverData[numOfBytes] = '\0';
     printf("%s\n",serverData);
     return 0;
-
-
-//    if (!strncmp(newMSG, "PUSH",4)){
-//        return 0;
-//    }
-//    else if(!strncmp(newMSG, "POP",3) || !strncmp(newMSG, "PEEK",4)){
-//        char serverData[1024];
-//        int numOfBytes;
-//        numOfBytes = recv(sockD, serverData, 1024, 0);
-//        serverData[numOfBytes] = '\0';
-//        printf("%s\n",serverData);
-//    }
-//    else{
-//        printf("Invalid command was entered\n");
-//    }
-    return 0;
 }
