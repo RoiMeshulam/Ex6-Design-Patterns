@@ -7,6 +7,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+/*
+ * This queue was taken from https://www.geeksforgeeks.org/queue-linked-list-implementation/
+ */
 
 // A linked list (LL) node to store a queue entry
 struct QNode {
@@ -40,7 +43,6 @@ struct Queue* createQ(){
     return q;
 }
 void enQ(struct Queue* q, struct QNode *k){
-    printf("enQ to the Queue %d\n",q->id);
     pthread_mutex_lock(&(q->mutexQ));
     // If queue is empty, then new node is front and rear both
     if (q->rear == NULL) {
@@ -56,18 +58,16 @@ void enQ(struct Queue* q, struct QNode *k){
 }
 
 struct QNode* deQ(struct Queue* q){
-    printf("try to deQ to Queue %d\n",q->id);
     // If queue is empty, waiting for enQ
     pthread_mutex_lock(&(q->mutexQ));
     while (q->front == NULL){
         printf("Queue %d is empty... waiting for enQ\n",q->id);
         pthread_cond_wait(&(q->condQ),&(q->mutexQ));
         if (q->status==-1){
-            printf("status condition\n");
             return NULL;
         }
     }
-    printf("I am not empty\n");
+    printf("enQ to queue %d has been made\n",q->id);
     // Store previous front and move front one node ahead
     struct QNode* temp = q->front;
     q->front = q->front->next;
@@ -79,13 +79,12 @@ struct QNode* deQ(struct Queue* q){
 }
 
 struct QNode* lastDeQ(struct Queue* q){
-    printf("try to deQQueue %d\n",q->id);
     // If queue is empty, waiting for enQ
     while (q->front == NULL){
         printf("Queue %d is empty...\n",q->id);
             return NULL;
     }
-    printf("I am not empty\n");
+    printf("enQ to queue %d has been made\n",q->id);
     // Store previous front and move front one node ahead
     struct QNode* temp = q->front;
     q->front = q->front->next;
@@ -97,6 +96,7 @@ struct QNode* lastDeQ(struct Queue* q){
 
 // free each Node in the queue and after free the queue.
 void destroyQ(struct Queue* q){
+    printf("destroyQ %d\n",q->id);
     q->status=-1;
     pthread_cond_signal(&(q->condQ));
     while (q->front!=NULL){

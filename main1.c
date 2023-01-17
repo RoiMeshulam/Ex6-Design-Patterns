@@ -15,8 +15,8 @@ struct Queue* q1 = NULL;
 struct Queue* q2 = NULL;
 struct Queue* q3 = NULL;
 
+// global pipline pointer
 struct pipline* pointer;
-
 
 /*
  * This function initializes q1,q2,q3 and their mutex and cond
@@ -42,9 +42,9 @@ void initQueues(void) {
 
 typedef struct active_object {
     struct Queue *q;
-    void* (*q_fun_ptr)(void*); // first func
-    void* (*f_fun_ptr)(void*); // after func
-    pthread_t my_pid;
+    void* (*first_func_ptr)(void*);
+    void* (*after_func_ptr)(void*);
+    pthread_t my_th;
 } active_object;
 
 typedef struct pipline {
@@ -56,18 +56,18 @@ typedef struct pipline {
 
 void makeNewAO(active_object *ao){
     printf("Making newAO for Queue %d\n",ao->q->id);
-    newAO(ao->q,ao->q_fun_ptr,ao->f_fun_ptr);
+    newAO(ao->q,ao->first_func_ptr,ao->after_func_ptr);
 }
 
-void newAO(struct Queue *q, void (*q_fun_ptr)(), void (*f_fun_ptr)()) {
+void newAO(struct Queue *q, void (*first_func_ptr)(), void (*after_func_ptr)()) {
     printf("NewAO is established\n");
     while (1){
         if (q->status==-1){
             break;
         }
         struct QNode* temp = deQ(q);
-        (*q_fun_ptr)(temp);
-        (*f_fun_ptr)(temp);
+        (*first_func_ptr)(temp);
+        (*after_func_ptr)(temp);
     }
 
 }
@@ -78,9 +78,7 @@ void Ao1(struct QNode* node){
     if (node==NULL){
         return;
     }
-    printf("The string is in AO1\n");
     char* str = node->key;
-    printf("The string is %s\n",str);
     int len = strlen(node->key);
     for (int i = 0; i < len; i++){
         if (node->key[i] == 'z'){
@@ -88,6 +86,12 @@ void Ao1(struct QNode* node){
         }
         else if (node->key[i] =='Z'){
             node->key[i] = 'A';
+        }
+        else if(node->key[i]=='9'){
+            node->key[i]= '0';
+        }
+        else if(node->key[i]=='~'){
+            node->key[i]=' ';
         }
         else{
             node->key[i] += 1;
@@ -99,12 +103,19 @@ void Ao2(struct QNode* node){
     if (node==NULL){
         return;
     }
-    printf("The string is in AO2\n");
-    printf("The string is %s\n",node->key);
     int len = strlen(node->key);
     for (int i = 0; i < len; i++){
         if (node->key[i]>=65 && node->key[i] <=90){
             node->key[i] += 32;
+        }
+        else if(node->key[i]>=32 && node->key[i]<=64){
+            return;
+        }
+        else if(node->key[i]>=91 && node->key[i]<=96){
+            return;
+        }
+        else if(node->key[i]>=123 && node->key[i]<=126){
+            return;
         }
         else{
             node->key[i] -= 32;
@@ -116,16 +127,12 @@ void afterAo1(struct QNode* node){
     if (node==NULL){
         return;
     }
-    printf("Now in afterAo1\n");
-    printf("The string is %s\n",node->key);
     enQ(q2,node);
 }
 void afterAo2(struct QNode* node){
     if (node==NULL){
         return;
     }
-    printf("Now in afterAo2\n");
-    printf("The string is %s\n",node->key);
     enQ(q3,node);
 }
 
@@ -133,27 +140,23 @@ void backToClient(struct QNode* node){
     if (node==NULL){
         return;
     }
-    printf("The string is %s\n",node->key);
+    printf("The string %s is now going back to the client\n",node->key);
     char* curr = node->key;
     send(node->sock,curr, strlen(curr),0);
     close(node->sock);
-    printf("back to client.. \n");
 }
 
 void releaseNode(struct QNode* node){
     if (node==NULL){
+        free(node);
         return;
     }
-    printf("In check func\n");
     free(node);
 }
 
 void destroyAO(active_object *obj) {
-    printf("try to destroy %d\n",obj->q->id);
     destroyQ(obj->q);
-    printf("after destroyQ\n");
     free(obj);
-    printf("destroy AO finished!!\n");
 }
 
 /*
@@ -162,7 +165,6 @@ void destroyAO(active_object *obj) {
 void *newFunc(struct QNode *node){
     printf("enQ the string: %s\n",node->key);
     enQ(q1,node);
-    printf("%d\n",q1->id);
 }
 
 int main(int argc, char const* argv[]){
@@ -172,20 +174,20 @@ int main(int argc, char const* argv[]){
     //_____________________________ActiveObjects and Pipeline Initialization________________________________________////
 
     struct active_object *a1 = (active_object *) (malloc(sizeof(active_object)));
-    a1->q_fun_ptr = Ao1;
-    a1->f_fun_ptr = afterAo1;
+    a1->first_func_ptr = Ao1;
+    a1->after_func_ptr = afterAo1;
     a1->q=q1;
-    a1->my_pid = th[0];
+    a1->my_th = th[0];
     struct active_object *a2 = (active_object *) (malloc(sizeof(active_object)));;
-    a2->q_fun_ptr = Ao2;
-    a2->f_fun_ptr = afterAo2;
+    a2->first_func_ptr = Ao2;
+    a2->after_func_ptr = afterAo2;
     a2->q=q2;
-    a2->my_pid = th[1];
+    a2->my_th = th[1];
     struct active_object *a3 = (active_object *) (malloc(sizeof(active_object)));;
-    a3->q_fun_ptr = backToClient;
-    a3->f_fun_ptr = releaseNode;
+    a3->first_func_ptr = backToClient;
+    a3->after_func_ptr = releaseNode;
     a3->q=q3;
-    a3->my_pid = th[2];
+    a3->my_th = th[2];
     pipline *pipline1 = (pipline*)(malloc(sizeof (pipline)));
     pipline1->first = a1;
     pipline1->second =a2;
@@ -224,14 +226,13 @@ int main(int argc, char const* argv[]){
     while (TRUE){
         // integer to hold client socket.
         int clientSocket = accept(servSockD, NULL, NULL);
-        printf("holding client socket\n");
+        printf("A מew connection has been established\n");
         pthread_t newThread;
         char clientData[1024];
         int numOfBytes;
         numOfBytes = recv(clientSocket, clientData, 1024, 0);
         clientData[numOfBytes] = '\0';
-        printf("got data\n");
-        printf("%s\n",clientData);
+        printf("Server got data from client\n");
         if (!strcmp(clientData, "EXIT")){
              printf("EXIT was entered\n");
              close(clientSocket);
@@ -244,13 +245,13 @@ int main(int argc, char const* argv[]){
             pthread_create(&newThread,NULL, newFunc,temp);
         }
     }
-    printf("after while loop\n");
-    sleep(5);
+    sleep(2);
     destroyAO(a1);
     destroyAO(a2);
     destroyAO(a3);
+    printf("All AO were destroyed\n");
     free(pipline1);
     close(servSockD);
-    printf("Finish realese all\n");
+    printf("The server closed\n");
     return 0;
 }

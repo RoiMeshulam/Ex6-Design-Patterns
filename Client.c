@@ -25,6 +25,7 @@ int main() {
     }
     //Accepting data from the server
     char newMSG[MAX_CMD_SIZE];
+    printf("Enter a string please..\n");
     fgets(newMSG,MAX_CMD_SIZE,stdin);
     newMSG[strlen(newMSG) - 1] = '\0';
     send(sockD, newMSG, strlen(newMSG), 0);

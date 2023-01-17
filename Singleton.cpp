@@ -1,73 +1,60 @@
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <iostream>
 #include <mutex>
+#include <pthread.h>
 #include <fstream>
 
 using namespace std;
 
-pthread_mutex_t mtx2;
+pthread_mutex_t mutex_th;
 
 template<typename T>
 class Singleton {
 private:
-    static Singleton *my_instance;
+    static Singleton *obj;
     T my_t;
 
     Singleton(T temp);
-    mutex mtx;
+    mutex single_mtx;
 
 public:
     static Singleton *Instance(T temp);
-
     void Destroy();
 };
 
 template<typename T>
-Singleton<T> *Singleton<T>::my_instance = 0;
+Singleton<T> *Singleton<T>::obj = 0;
 
 template<typename T>
 Singleton<T> *Singleton<T>::Instance(T temp) {
-    if (my_instance == 0) {
-        pthread_mutex_lock(&mtx2);
-        my_instance = new Singleton(temp);
+    if (obj == 0) {
+        pthread_mutex_lock(&mutex_th);
+        obj = new Singleton(temp);
     }
-    pthread_mutex_unlock(&mtx2);
-    return my_instance;
+    pthread_mutex_unlock(&mutex_th);
+    return obj;
 }
 
 template<typename T>
 Singleton<T>::Singleton(T temp) {
-    mtx.lock();
+    single_mtx.lock();
     my_t = temp;
 }
 
 template<typename T>
 void Singleton<T>::Destroy() {
-    my_instance = 0;
-    mtx.unlock();
+    obj = 0;
+    single_mtx.unlock();
 
 }
 
 int main() {
-//    new Singleton(); // Won't work
     FILE *fptr;
-//    cout << inputFile.fileDesc << endl;//made up call
-    Singleton<FILE *> *s = Singleton<FILE *>::Instance(fptr); // Ok
-    Singleton<FILE *> *r = Singleton<FILE *>::Instance(fptr);
-//
-//    /* The addresses will be the same. */
-//    std::cout << s << std::endl;
-//    std::cout << r << std::endl;
-//    pthread_t t1;
-//    pthread_t t2;
-//    Singleton * s = pthread_create(&t1, NULL, Singleton::Instance, NULL);
-//    Singleton * r = pthread_create(&t2, NULL, Singleton::Instance, NULL);
-//    pthread_join(t1, NULL);
-//    pthread_join(t2, NULL);
-    std::cout << s << std::endl;
-    std::cout << r << std::endl;
+    Singleton<FILE *> *ptr1 = Singleton<FILE *>::Instance(fptr);
+    Singleton<FILE *> *ptr2 = Singleton<FILE *>::Instance(fptr);
+    std::cout << ptr1 << std::endl;
+    std::cout << ptr2 << std::endl;
 }
